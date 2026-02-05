@@ -8,6 +8,7 @@ export default function AdminDashboard() {
   const [transcripts, setTranscripts] = useState<Transcript[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [configError, setConfigError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTranscripts()
@@ -21,7 +22,9 @@ export default function AdminDashboard() {
 
     if (error) {
       console.error('Error fetching transcripts:', error)
-      alert(`Error loading transcripts: ${error.message}`)
+      if (error.message?.includes('Invalid URL') || error.message?.includes('fetch')) {
+        setConfigError('Supabase not configured. Check environment variables.')
+      }
     } else {
       setTranscripts(data || [])
     }
@@ -54,6 +57,11 @@ export default function AdminDashboard() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6">
+        {configError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <strong>Configuration Error:</strong> {configError}
+          </div>
+        )}
         {loading ? (
           <div className="text-center text-gray-500 py-12">Loading...</div>
         ) : transcripts.length === 0 ? (
@@ -172,7 +180,7 @@ function AddTranscriptModal({ onClose, onSuccess }: { onClose: () => void; onSuc
 
     if (error) {
       console.error('Error creating transcript:', error)
-      alert(`Error creating transcript: ${error.message}`)
+      alert(`Error: ${error.message || error.code || JSON.stringify(error)}`)
     } else {
       onSuccess()
     }
