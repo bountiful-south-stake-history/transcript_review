@@ -57,7 +57,7 @@ export default function AdminDashboard() {
   const sendInvite = (t: Transcript) => {
     const link = `${window.location.origin}/review/${t.id}`
     const firstName = t.speaker_name?.split(' ')[0] || 'Speaker'
-    const subject = encodeURIComponent(`Please review your talk: ${t.talk_title}`)
+    const subject = encodeURIComponent(`Awaiting Your Review: ${t.talk_title}`)
     const body = encodeURIComponent(
       `${firstName},\n\n` +
       `Will you please take a moment to review this document "${t.talk_title}", revising it as you see fit, then press "Approve" when ready to be published.\n\n` +
