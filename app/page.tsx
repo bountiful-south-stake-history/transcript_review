@@ -21,6 +21,7 @@ export default function AdminDashboard() {
 
     if (error) {
       console.error('Error fetching transcripts:', error)
+      alert(`Error loading transcripts: ${error.message}`)
     } else {
       setTranscripts(data || [])
     }
@@ -171,7 +172,7 @@ function AddTranscriptModal({ onClose, onSuccess }: { onClose: () => void; onSuc
 
     if (error) {
       console.error('Error creating transcript:', error)
-      alert('Error creating transcript')
+      alert(`Error creating transcript: ${error.message}`)
     } else {
       onSuccess()
     }
