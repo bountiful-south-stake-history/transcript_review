@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, use } from 'react'
 import { supabase, Transcript } from '@/lib/supabase'
+import Link from 'next/link'
 
 interface ReviewPageProps {
   params: Promise<{ id: string }>
@@ -10,6 +11,7 @@ interface ReviewPageProps {
 export default function ReviewPage({ params }: ReviewPageProps) {
   const { id } = use(params)
   const [transcript, setTranscript] = useState<Transcript | null>(null)
+  const [relatedTranscripts, setRelatedTranscripts] = useState<Transcript[]>([])
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -17,8 +19,9 @@ export default function ReviewPage({ params }: ReviewPageProps) {
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showMenu, setShowMenu] = useState(false)
 
-  // Fetch transcript on load
+  // Fetch transcript and related transcripts on load
   useEffect(() => {
     async function fetchTranscript() {
       const { data, error } = await supabase
@@ -35,6 +38,20 @@ export default function ReviewPage({ params }: ReviewPageProps) {
 
       setTranscript(data)
       setContent(data.revised_text || data.original_text)
+
+      // Fetch related transcripts by same speaker name or reviewer email
+      if (data.reviewer_email || data.speaker_name) {
+        const { data: related } = await supabase
+          .from('talk_transcripts')
+          .select('*')
+          .or(`reviewer_email.eq.${data.reviewer_email},speaker_name.eq.${data.speaker_name}`)
+          .order('talk_date', { ascending: false })
+
+        if (related && related.length > 1) {
+          setRelatedTranscripts(related)
+        }
+      }
+
       setLoading(false)
     }
 
@@ -145,7 +162,55 @@ export default function ReviewPage({ params }: ReviewPageProps) {
                 })}
               </p>
             </div>
-            <StatusBadge status={transcript.status} />
+            <div className="flex items-center gap-3">
+              {relatedTranscripts.length > 1 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMenu(!showMenu)}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    <span>My Talks ({relatedTranscripts.length})</span>
+                    <svg className={`w-4 h-4 transition-transform ${showMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {showMenu && (
+                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
+                      <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase border-b border-gray-100">
+                        Your Transcripts
+                      </div>
+                      {relatedTranscripts.map((t) => (
+                        <Link
+                          key={t.id}
+                          href={`/review/${t.id}`}
+                          onClick={() => setShowMenu(false)}
+                          className={`block px-3 py-2 hover:bg-gray-50 ${t.id === id ? 'bg-blue-50' : ''}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className={`text-sm font-medium truncate ${t.id === id ? 'text-blue-700' : 'text-gray-900'}`}>
+                                {t.talk_title}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {new Date(t.talk_date).toLocaleDateString()}
+                              </div>
+                            </div>
+                            <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                              t.status === 'approved' 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {t.status === 'approved' ? 'Done' : 'Pending'}
+                            </span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <StatusBadge status={transcript.status} />
+            </div>
           </div>
         </div>
       </header>
