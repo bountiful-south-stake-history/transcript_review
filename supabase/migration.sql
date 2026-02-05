@@ -3,16 +3,15 @@
 
 create table if not exists talk_transcripts (
   id uuid primary key default gen_random_uuid(),
-  speaker_name text not null,
-  speaker_email text,
-  talk_title text not null,
-  talk_date date not null,
-  original_text text not null,
+  speaker_name text,
+  reviewer_email text,
+  talk_title text,
+  talk_date date,
+  original_text text,
   revised_text text,
-  status text not null default 'pending_review' check (status in ('pending_review', 'approved')),
+  status text default 'pending_review' check (status in ('pending_review', 'approved')),
   approved_at timestamptz,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  created_at timestamptz default now()
 );
 
 -- Enable Row Level Security

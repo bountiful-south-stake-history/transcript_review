@@ -91,8 +91,8 @@ export default function AdminDashboard() {
                   <tr key={t.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{t.speaker_name}</div>
-                      {t.speaker_email && (
-                        <div className="text-sm text-gray-500">{t.speaker_email}</div>
+                      {t.reviewer_email && (
+                        <div className="text-sm text-gray-500">{t.reviewer_email}</div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-gray-700">{t.talk_title}</td>
@@ -161,7 +161,7 @@ function AddTranscriptModal({ onClose, onSuccess }: { onClose: () => void; onSuc
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     speaker_name: '',
-    speaker_email: '',
+    reviewer_email: '',
     talk_title: '',
     talk_date: new Date().toISOString().split('T')[0],
     original_text: ''
@@ -179,8 +179,8 @@ function AddTranscriptModal({ onClose, onSuccess }: { onClose: () => void; onSuc
       })
 
     if (error) {
-      console.error('Error creating transcript:', error)
-      alert(`Error: ${error.message || error.code || JSON.stringify(error)}`)
+      console.error('Full error:', JSON.stringify(error, null, 2))
+      alert(`Error: ${error.message} (Code: ${error.code}, Details: ${error.details}, Hint: ${error.hint})`)
     } else {
       onSuccess()
     }
@@ -208,12 +208,12 @@ function AddTranscriptModal({ onClose, onSuccess }: { onClose: () => void; onSuc
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Speaker Email
+                Reviewer Email
               </label>
               <input
                 type="email"
-                value={form.speaker_email}
-                onChange={(e) => setForm({ ...form, speaker_email: e.target.value })}
+                value={form.reviewer_email}
+                onChange={(e) => setForm({ ...form, reviewer_email: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>

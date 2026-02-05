@@ -13,7 +13,7 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
 export interface Transcript {
   id: string
   speaker_name: string
-  speaker_email: string | null
+  reviewer_email: string | null
   talk_title: string
   talk_date: string
   original_text: string
@@ -21,5 +21,4 @@ export interface Transcript {
   status: 'pending_review' | 'approved'
   approved_at: string | null
   created_at: string
-  updated_at: string
 }
