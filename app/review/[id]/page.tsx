@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, use } from 'react'
 import { supabase, Transcript } from '@/lib/supabase'
 
 interface ReviewPageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default function ReviewPage({ params }: ReviewPageProps) {
+  const { id } = use(params)
   const [transcript, setTranscript] = useState<Transcript | null>(null)
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
@@ -23,7 +24,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
       const { data, error } = await supabase
         .from('talk_transcripts')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', id)
         .single()
 
       if (error) {
@@ -38,7 +39,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
     }
 
     fetchTranscript()
-  }, [params.id])
+  }, [id])
 
   // Auto-save every 30 seconds
   useEffect(() => {
@@ -58,8 +59,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
     const { error } = await supabase
       .from('talk_transcripts')
       .update({
-        revised_text: content,
-        updated_at: new Date().toISOString()
+        revised_text: content
       })
       .eq('id', transcript.id)
 
@@ -83,8 +83,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
       .update({
         revised_text: content,
         status: 'approved',
-        approved_at: now,
-        updated_at: now
+        approved_at: now
       })
       .eq('id', transcript.id)
 
