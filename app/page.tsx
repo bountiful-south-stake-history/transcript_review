@@ -296,8 +296,14 @@ export default function AdminDashboard() {
               <div className="flex gap-3">
                 <button
                   onClick={async () => {
-                    const text = viewTranscript.revised_text || viewTranscript.original_text
-                    await navigator.clipboard.writeText(text)
+                    const date = new Date(viewTranscript.talk_date).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })
+                    const header = `${viewTranscript.talk_title} — ${date}\n\n`
+                    const content = viewTranscript.revised_text || viewTranscript.original_text
+                    await navigator.clipboard.writeText(header + content)
                     setTextCopied(true)
                     setTimeout(() => setTextCopied(false), 2000)
                   }}
