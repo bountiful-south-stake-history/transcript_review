@@ -13,6 +13,7 @@ export default function AdminDashboard() {
   const [deleting, setDeleting] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [sentId, setSentId] = useState<string | null>(null)
+  const [viewTranscript, setViewTranscript] = useState<Transcript | null>(null)
 
   useEffect(() => {
     fetchTranscripts()
@@ -171,12 +172,12 @@ export default function AdminDashboard() {
                         >
                           {copiedId === t.id ? 'Copied!' : 'Copy Link'}
                         </button>
-                        <Link
-                          href={`/review/${t.id}`}
+                        <button
+                          onClick={() => setViewTranscript(t)}
                           className="text-sm text-gray-600 hover:underline"
                         >
                           View
-                        </Link>
+                        </button>
                         <button
                           onClick={() => setDeleteConfirm(t.id)}
                           className="text-red-500 hover:text-red-700 p-1"
@@ -227,6 +228,75 @@ export default function AdminDashboard() {
                 className="px-6 py-2 rounded-lg font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
               >
                 {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewTranscript && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">{viewTranscript.talk_title}</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {viewTranscript.speaker_name} • {new Date(viewTranscript.talk_date).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={viewTranscript.status} />
+                  <button
+                    onClick={() => setViewTranscript(null)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              {viewTranscript.status === 'approved' && viewTranscript.approved_at && (
+                <p className="text-sm text-green-600 mt-2">
+                  Approved on {new Date(viewTranscript.approved_at).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              )}
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              {viewTranscript.revised_text ? (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase">Approved/Revised Text</h3>
+                  <div className="prose max-w-none text-gray-800 whitespace-pre-wrap font-serif">
+                    {viewTranscript.revised_text}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase">Original Text</h3>
+                  <div className="prose max-w-none text-gray-800 whitespace-pre-wrap font-serif">
+                    {viewTranscript.original_text}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-200 flex justify-between items-center">
+              <Link
+                href={`/review/${viewTranscript.id}`}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Open Review Page
+              </Link>
+              <button
+                onClick={() => setViewTranscript(null)}
+                className="px-4 py-2 rounded-lg font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Close
               </button>
             </div>
           </div>
