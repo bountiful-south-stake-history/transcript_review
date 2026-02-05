@@ -9,6 +9,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
 
+// Parse date string without timezone shift
+export function parseLocalDate(dateStr: string): Date {
+  return new Date(dateStr + 'T12:00:00')
+}
+
 // Types for our transcript table
 export interface Transcript {
   id: string

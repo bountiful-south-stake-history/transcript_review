@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, use } from 'react'
-import { supabase, Transcript } from '@/lib/supabase'
+import { supabase, Transcript, parseLocalDate } from '@/lib/supabase'
 import Link from 'next/link'
 
 interface ReviewPageProps {
@@ -154,7 +154,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
             <div>
               <h1 className="text-xl font-bold text-gray-900">{transcript.talk_title}</h1>
               <p className="text-sm text-gray-600">
-                {transcript.speaker_name} • {new Date(transcript.talk_date).toLocaleDateString('en-US', {
+                {transcript.speaker_name} • {parseLocalDate(transcript.talk_date).toLocaleDateString('en-US', {
                   weekday: 'long',
                   year: 'numeric',
                   month: 'long',
@@ -199,7 +199,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
                                 {t.talk_title}
                               </div>
                               <div className="text-xs text-gray-500">
-                                {new Date(t.talk_date).toLocaleDateString()}
+                                {parseLocalDate(t.talk_date).toLocaleDateString()}
                               </div>
                             </div>
                             <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${

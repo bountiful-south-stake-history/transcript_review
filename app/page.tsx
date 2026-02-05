@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase, Transcript } from '@/lib/supabase'
+import { supabase, Transcript, parseLocalDate } from '@/lib/supabase'
 import Link from 'next/link'
 
 const ADMIN_PASSWORD = 'ComeFollowMe'
@@ -225,7 +225,7 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-4 py-3 text-gray-700">{t.talk_title}</td>
                     <td className="px-4 py-3 text-gray-600 text-sm">
-                      {new Date(t.talk_date).toLocaleDateString()}
+                      {parseLocalDate(t.talk_date).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={t.status} />
@@ -315,7 +315,7 @@ export default function AdminDashboard() {
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">{viewTranscript.talk_title}</h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    {viewTranscript.speaker_name} • {new Date(viewTranscript.talk_date).toLocaleDateString()}
+                    {viewTranscript.speaker_name} • {parseLocalDate(viewTranscript.talk_date).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -368,7 +368,7 @@ export default function AdminDashboard() {
               <div className="flex gap-3">
                 <button
                   onClick={async () => {
-                    const date = new Date(viewTranscript.talk_date).toLocaleDateString('en-US', {
+                    const date = parseLocalDate(viewTranscript.talk_date).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric'
