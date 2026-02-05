@@ -177,7 +177,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
                   setContent(e.target.value)
                   setHasChanges(true)
                 }}
-                className="w-full min-h-[500px] p-6 text-gray-800 leading-relaxed resize-none focus:outline-none font-serif text-lg"
+                className="w-full min-h-[500px] p-6 text-gray-800 leading-relaxed resize-y focus:outline-none font-serif text-lg"
                 placeholder="Transcript content..."
               />
             </div>
