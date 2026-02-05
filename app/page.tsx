@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [sentId, setSentId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTranscripts()
@@ -50,6 +51,25 @@ export default function AdminDashboard() {
       document.body.removeChild(textArea)
       setCopiedId(id)
       setTimeout(() => setCopiedId(null), 2000)
+    }
+  }
+
+  const sendInvite = (t: Transcript) => {
+    const link = `${window.location.origin}/review/${t.id}`
+    const subject = encodeURIComponent(`Please review your talk: ${t.talk_title}`)
+    const body = encodeURIComponent(
+      `Hi ${t.speaker_name},\n\n` +
+      `Please review and approve your transcript for "${t.talk_title}".\n\n` +
+      `Click here to review: ${link}\n\n` +
+      `Thank you!`
+    )
+    
+    if (t.reviewer_email) {
+      window.open(`mailto:${t.reviewer_email}?subject=${subject}&body=${body}`, '_blank')
+      setSentId(t.id)
+      setTimeout(() => setSentId(null), 2000)
+    } else {
+      alert('No reviewer email set for this transcript')
     }
   }
 
@@ -137,6 +157,13 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex gap-3 justify-end items-center">
+                        <button
+                          onClick={() => sendInvite(t)}
+                          className={`text-sm ${sentId === t.id ? 'text-green-600 font-medium' : t.reviewer_email ? 'text-purple-600 hover:underline' : 'text-gray-400 cursor-not-allowed'}`}
+                          title={t.reviewer_email ? `Email ${t.reviewer_email}` : 'No email set'}
+                        >
+                          {sentId === t.id ? 'Opened!' : 'Email'}
+                        </button>
                         <button
                           onClick={() => copyReviewLink(t.id)}
                           className={`text-sm ${copiedId === t.id ? 'text-green-600 font-medium' : 'text-blue-600 hover:underline'}`}
