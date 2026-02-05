@@ -164,7 +164,8 @@ export default function ReviewPage({ params }: ReviewPageProps) {
             </div>
             <div className="flex items-center gap-3">
               {relatedTranscripts.length > 1 && (() => {
-                const hasPendingTranscripts = relatedTranscripts.some(t => t.status !== 'approved')
+                const pendingCount = relatedTranscripts.filter(t => t.status !== 'approved').length
+                const hasPendingTranscripts = pendingCount > 0
                 return (
                 <div className="relative">
                   <button
@@ -175,7 +176,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
                         : 'bg-gray-100 hover:bg-gray-200'
                     }`}
                   >
-                    <span>My Transcripts ({relatedTranscripts.length})</span>
+                    <span>My Transcripts ({pendingCount})</span>
                     <svg className={`w-4 h-4 transition-transform ${showMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
