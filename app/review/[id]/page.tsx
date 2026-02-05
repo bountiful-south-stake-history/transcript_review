@@ -132,7 +132,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <h1 className="text-xl font-bold text-gray-900">{transcript.talk_title}</h1>
@@ -151,7 +151,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
       </header>
 
       {/* Main content */}
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-4 py-6">
         {isApproved ? (
           <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
             <div className="text-green-600 text-4xl mb-3">✓</div>
