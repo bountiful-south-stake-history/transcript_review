@@ -163,13 +163,19 @@ export default function ReviewPage({ params }: ReviewPageProps) {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {relatedTranscripts.length > 1 && (
+              {relatedTranscripts.length > 1 && (() => {
+                const hasPendingTranscripts = relatedTranscripts.some(t => t.status !== 'approved')
+                return (
                 <div className="relative">
                   <button
                     onClick={() => setShowMenu(!showMenu)}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                      hasPendingTranscripts 
+                        ? 'bg-red-50 text-red-700 animate-pulse-border' 
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    }`}
                   >
-                    <span>My Talks ({relatedTranscripts.length})</span>
+                    <span>My Transcripts ({relatedTranscripts.length})</span>
                     <svg className={`w-4 h-4 transition-transform ${showMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -208,7 +214,8 @@ export default function ReviewPage({ params }: ReviewPageProps) {
                     </div>
                   )}
                 </div>
-              )}
+                )
+              })()}
               <StatusBadge status={transcript.status} />
             </div>
           </div>
