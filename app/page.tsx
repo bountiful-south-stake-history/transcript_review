@@ -11,6 +11,7 @@ export default function AdminDashboard() {
   const [configError, setConfigError] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTranscripts()
@@ -33,10 +34,23 @@ export default function AdminDashboard() {
     setLoading(false)
   }
 
-  const copyReviewLink = (id: string) => {
+  const copyReviewLink = async (id: string) => {
     const link = `${window.location.origin}/review/${id}`
-    navigator.clipboard.writeText(link)
-    alert('Review link copied to clipboard!')
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = link
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -125,9 +139,9 @@ export default function AdminDashboard() {
                       <div className="flex gap-3 justify-end items-center">
                         <button
                           onClick={() => copyReviewLink(t.id)}
-                          className="text-sm text-blue-600 hover:underline"
+                          className={`text-sm ${copiedId === t.id ? 'text-green-600 font-medium' : 'text-blue-600 hover:underline'}`}
                         >
-                          Copy Link
+                          {copiedId === t.id ? 'Copied!' : 'Copy Link'}
                         </button>
                         <Link
                           href={`/review/${t.id}`}
