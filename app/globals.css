@@ -7,5 +7,5 @@
   50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
 }
 .animate-pulse-border {
-  animation: pulse-border 2s ease-in-out infinite;
+  animation: pulse-border 5s ease-in-out infinite;
 }
