@@ -9,6 +9,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [configError, setConfigError] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchTranscripts()
@@ -35,6 +37,23 @@ export default function AdminDashboard() {
     const link = `${window.location.origin}/review/${id}`
     navigator.clipboard.writeText(link)
     alert('Review link copied to clipboard!')
+  }
+
+  const handleDelete = async (id: string) => {
+    setDeleting(true)
+    const { error } = await supabase
+      .from('talk_transcripts')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Delete error:', error)
+      alert(`Error deleting: ${error.message}`)
+    } else {
+      setTranscripts(prev => prev.filter(t => t.id !== id))
+    }
+    setDeleteConfirm(null)
+    setDeleting(false)
   }
 
   return (
@@ -103,7 +122,7 @@ export default function AdminDashboard() {
                       <StatusBadge status={t.status} />
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex gap-2 justify-end">
+                      <div className="flex gap-3 justify-end items-center">
                         <button
                           onClick={() => copyReviewLink(t.id)}
                           className="text-sm text-blue-600 hover:underline"
@@ -116,6 +135,15 @@ export default function AdminDashboard() {
                         >
                           View
                         </Link>
+                        <button
+                          onClick={() => setDeleteConfirm(t.id)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                          title="Delete transcript"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -134,6 +162,33 @@ export default function AdminDashboard() {
             fetchTranscripts()
           }}
         />
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Delete Transcript?</h2>
+            <p className="text-gray-600 mb-6">
+              This action cannot be undone. The transcript will be permanently deleted.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirm)}
+                disabled={deleting}
+                className="px-6 py-2 rounded-lg font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
