@@ -14,6 +14,7 @@ export default function AdminDashboard() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [sentId, setSentId] = useState<string | null>(null)
   const [viewTranscript, setViewTranscript] = useState<Transcript | null>(null)
+  const [textCopied, setTextCopied] = useState(false)
 
   useEffect(() => {
     fetchTranscripts()
@@ -292,12 +293,25 @@ export default function AdminDashboard() {
               >
                 Open Review Page
               </Link>
-              <button
-                onClick={() => setViewTranscript(null)}
-                className="px-4 py-2 rounded-lg font-medium text-gray-700 hover:bg-gray-100"
-              >
-                Close
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={async () => {
+                    const text = viewTranscript.revised_text || viewTranscript.original_text
+                    await navigator.clipboard.writeText(text)
+                    setTextCopied(true)
+                    setTimeout(() => setTextCopied(false), 2000)
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium ${textCopied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                >
+                  {textCopied ? 'Copied!' : 'Copy Text'}
+                </button>
+                <button
+                  onClick={() => setViewTranscript(null)}
+                  className="px-4 py-2 rounded-lg font-medium text-gray-700 hover:bg-gray-100"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
