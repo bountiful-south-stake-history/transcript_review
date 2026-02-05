@@ -4,7 +4,14 @@ import { useEffect, useState } from 'react'
 import { supabase, Transcript } from '@/lib/supabase'
 import Link from 'next/link'
 
+const ADMIN_PASSWORD = 'ComeFollowMe'
+
 export default function AdminDashboard() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [password, setPassword] = useState('')
+  const [authError, setAuthError] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(true)
+  
   const [transcripts, setTranscripts] = useState<Transcript[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -17,8 +24,73 @@ export default function AdminDashboard() {
   const [textCopied, setTextCopied] = useState(false)
 
   useEffect(() => {
-    fetchTranscripts()
+    const auth = sessionStorage.getItem('admin_auth')
+    if (auth === 'true') {
+      setIsAuthenticated(true)
+    }
+    setCheckingAuth(false)
   }, [])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchTranscripts()
+    }
+  }, [isAuthenticated])
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (password === ADMIN_PASSWORD) {
+      sessionStorage.setItem('admin_auth', 'true')
+      setIsAuthenticated(true)
+      setAuthError(false)
+    } else {
+      setAuthError(true)
+    }
+  }
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-8">
+          <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">Talk Transcripts</h1>
+          <p className="text-gray-600 text-center mb-6">Enter password to continue</p>
+          
+          <form onSubmit={handleLogin}>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                setAuthError(false)
+              }}
+              placeholder="Password"
+              className={`w-full px-4 py-3 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                authError ? 'border-red-500' : 'border-gray-300'
+              }`}
+              autoFocus
+            />
+            {authError && (
+              <p className="text-red-500 text-sm mb-4">Incorrect password</p>
+            )}
+            <button
+              type="submit"
+              className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              Enter
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
 
   async function fetchTranscripts() {
     const { data, error } = await supabase
