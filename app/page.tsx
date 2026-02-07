@@ -203,70 +203,120 @@ export default function AdminDashboard() {
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Speaker</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Talk Title</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Date</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {transcripts.map((t) => (
-                  <tr key={t.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{t.speaker_name}</div>
-                      {t.reviewer_email && (
-                        <div className="text-sm text-gray-500">{t.reviewer_email}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{t.talk_title}</td>
-                    <td className="px-4 py-3 text-gray-600 text-sm">
-                      {parseLocalDate(t.talk_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={t.status} />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex gap-3 justify-end items-center">
-                        <button
-                          onClick={() => sendInvite(t)}
-                          className={`text-sm ${sentId === t.id ? 'text-green-600 font-medium' : t.reviewer_email ? 'text-purple-600 hover:underline' : 'text-gray-400 cursor-not-allowed'}`}
-                          title={t.reviewer_email ? `Email ${t.reviewer_email}` : 'No email set'}
-                        >
-                          {sentId === t.id ? 'Opened!' : 'Email'}
-                        </button>
-                        <button
-                          onClick={() => copyReviewLink(t.id)}
-                          className={`text-sm ${copiedId === t.id ? 'text-green-600 font-medium' : 'text-blue-600 hover:underline'}`}
-                        >
-                          {copiedId === t.id ? 'Copied!' : 'Copy Link'}
-                        </button>
-                        <button
-                          onClick={() => setViewTranscript(t)}
-                          className="text-sm text-gray-600 hover:underline"
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(t.id)}
-                          className="text-red-500 hover:text-red-700 p-1"
-                          title="Delete transcript"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
+          <>
+            {/* Mobile card view */}
+            <div className="md:hidden space-y-3">
+              {transcripts.map((t) => (
+                <div key={t.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 truncate">{t.talk_title}</div>
+                      <div className="text-sm text-gray-600">{t.speaker_name}</div>
+                    </div>
+                    <StatusBadge status={t.status} />
+                  </div>
+                  <div className="text-xs text-gray-500 mb-3">
+                    {parseLocalDate(t.talk_date).toLocaleDateString()}
+                    {t.reviewer_email && <span> • {t.reviewer_email}</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-3 items-center border-t border-gray-100 pt-3">
+                    <button
+                      onClick={() => sendInvite(t)}
+                      className={`text-sm ${sentId === t.id ? 'text-green-600 font-medium' : t.reviewer_email ? 'text-purple-600' : 'text-gray-400'}`}
+                    >
+                      {sentId === t.id ? 'Opened!' : 'Email'}
+                    </button>
+                    <button
+                      onClick={() => copyReviewLink(t.id)}
+                      className={`text-sm ${copiedId === t.id ? 'text-green-600 font-medium' : 'text-blue-600'}`}
+                    >
+                      {copiedId === t.id ? 'Copied!' : 'Copy Link'}
+                    </button>
+                    <button
+                      onClick={() => setViewTranscript(t)}
+                      className="text-sm text-gray-600"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm(t.id)}
+                      className="text-red-500 p-1 ml-auto"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table view */}
+            <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Speaker</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Talk Title</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Date</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
+                    <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {transcripts.map((t) => (
+                    <tr key={t.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900">{t.speaker_name}</div>
+                        {t.reviewer_email && (
+                          <div className="text-sm text-gray-500">{t.reviewer_email}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{t.talk_title}</td>
+                      <td className="px-4 py-3 text-gray-600 text-sm">
+                        {parseLocalDate(t.talk_date).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={t.status} />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex gap-3 justify-end items-center">
+                          <button
+                            onClick={() => sendInvite(t)}
+                            className={`text-sm ${sentId === t.id ? 'text-green-600 font-medium' : t.reviewer_email ? 'text-purple-600 hover:underline' : 'text-gray-400 cursor-not-allowed'}`}
+                            title={t.reviewer_email ? `Email ${t.reviewer_email}` : 'No email set'}
+                          >
+                            {sentId === t.id ? 'Opened!' : 'Email'}
+                          </button>
+                          <button
+                            onClick={() => copyReviewLink(t.id)}
+                            className={`text-sm ${copiedId === t.id ? 'text-green-600 font-medium' : 'text-blue-600 hover:underline'}`}
+                          >
+                            {copiedId === t.id ? 'Copied!' : 'Copy Link'}
+                          </button>
+                          <button
+                            onClick={() => setViewTranscript(t)}
+                            className="text-sm text-gray-600 hover:underline"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm(t.id)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                            title="Delete transcript"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </main>
 
