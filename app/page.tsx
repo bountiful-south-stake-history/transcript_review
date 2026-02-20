@@ -1,7 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase, Transcript, parseLocalDate } from '@/lib/supabase'
+import { supabase, Transcript, parseLocalDate, getDueDateInfo } from '@/lib/supabase'
+import { useToast } from '@/components/Toast'
+import { StatusBadge } from '@/components/StatusBadge'
+import { exportAsText, exportAsDocx } from '@/lib/export'
+import { logError } from '@/lib/logger'
 import Link from 'next/link'
 
 const ADMIN_PASSWORD = 'ComeFollowMe'
@@ -18,10 +22,24 @@ export default function AdminDashboard() {
   const [configError, setConfigError] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [sentId, setSentId] = useState<string | null>(null)
   const [viewTranscript, setViewTranscript] = useState<Transcript | null>(null)
-  const [textCopied, setTextCopied] = useState(false)
+  const [editTranscript, setEditTranscript] = useState<Transcript | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending_review' | 'in_progress' | 'approved'>('all')
+  const { addToast } = useToast()
+
+  const filteredTranscripts = transcripts.filter(t => {
+    if (statusFilter !== 'all' && t.status !== statusFilter) return false
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      return (
+        t.speaker_name.toLowerCase().includes(q) ||
+        t.talk_title.toLowerCase().includes(q) ||
+        (t.reviewer_email && t.reviewer_email.toLowerCase().includes(q))
+      )
+    }
+    return true
+  })
 
   useEffect(() => {
     const auth = sessionStorage.getItem('admin_auth')
@@ -99,7 +117,7 @@ export default function AdminDashboard() {
       .order('talk_date', { ascending: false })
 
     if (error) {
-      console.error('Error fetching transcripts:', error)
+      logError('fetchTranscripts', error)
       if (error.message?.includes('Invalid URL') || error.message?.includes('fetch')) {
         setConfigError('Supabase not configured. Check environment variables.')
       }
@@ -113,19 +131,15 @@ export default function AdminDashboard() {
     const link = `${window.location.origin}/review/${id}`
     try {
       await navigator.clipboard.writeText(link)
-      setCopiedId(id)
-      setTimeout(() => setCopiedId(null), 2000)
     } catch {
-      // Fallback for older browsers
       const textArea = document.createElement('textarea')
       textArea.value = link
       document.body.appendChild(textArea)
       textArea.select()
       document.execCommand('copy')
       document.body.removeChild(textArea)
-      setCopiedId(id)
-      setTimeout(() => setCopiedId(null), 2000)
     }
+    addToast('Review link copied to clipboard', 'success')
   }
 
   const sendInvite = (t: Transcript) => {
@@ -141,10 +155,9 @@ export default function AdminDashboard() {
     
     if (t.reviewer_email) {
       window.open(`mailto:${t.reviewer_email}?subject=${subject}&body=${body}`, '_blank')
-      setSentId(t.id)
-      setTimeout(() => setSentId(null), 2000)
+      addToast('Email client opened', 'success')
     } else {
-      alert('No reviewer email set for this transcript')
+      addToast('No reviewer email set for this transcript', 'error')
     }
   }
 
@@ -156,10 +169,10 @@ export default function AdminDashboard() {
       .eq('id', id)
 
     if (error) {
-      console.error('Delete error:', error)
-      alert(`Error deleting: ${error.message}`)
+      addToast(`Error deleting transcript: ${error.message}`, 'error')
     } else {
       setTranscripts(prev => prev.filter(t => t.id !== id))
+      addToast('Transcript deleted', 'success')
     }
     setDeleteConfirm(null)
     setDeleting(false)
@@ -204,9 +217,38 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <>
+            {/* Search and filter */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Search by speaker, title, or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending_review">Pending Review</option>
+                <option value="in_progress">In Progress</option>
+                <option value="approved">Approved</option>
+              </select>
+            </div>
+
+            {filteredTranscripts.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                <p className="text-gray-500">No transcripts match your search</p>
+              </div>
+            ) : (
+            <>
             {/* Mobile card view */}
             <div className="md:hidden space-y-3">
-              {transcripts.map((t) => (
+              {filteredTranscripts.map((t) => (
                 <div key={t.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1 min-w-0">
@@ -218,19 +260,34 @@ export default function AdminDashboard() {
                   <div className="text-xs text-gray-500 mb-3">
                     {parseLocalDate(t.talk_date).toLocaleDateString()}
                     {t.reviewer_email && <span> • {t.reviewer_email}</span>}
+                    {t.due_date && t.status !== 'approved' && (() => {
+                      const info = getDueDateInfo(t.due_date)
+                      return (
+                        <span>
+                          {' '}• Due: {parseLocalDate(t.due_date).toLocaleDateString()}
+                          {info.label && <span className={`ml-1 font-medium ${info.colorClass}`}>{info.label}</span>}
+                        </span>
+                      )
+                    })()}
                   </div>
                   <div className="flex flex-wrap gap-3 items-center border-t border-gray-100 pt-3">
                     <button
                       onClick={() => sendInvite(t)}
-                      className={`text-sm ${sentId === t.id ? 'text-green-600 font-medium' : t.reviewer_email ? 'text-purple-600' : 'text-gray-400'}`}
+                      className={`text-sm ${t.reviewer_email ? 'text-purple-600' : 'text-gray-400'}`}
                     >
-                      {sentId === t.id ? 'Opened!' : 'Email'}
+                      Email
                     </button>
                     <button
                       onClick={() => copyReviewLink(t.id)}
-                      className={`text-sm ${copiedId === t.id ? 'text-green-600 font-medium' : 'text-blue-600'}`}
+                      className="text-sm text-blue-600"
                     >
-                      {copiedId === t.id ? 'Copied!' : 'Copy Link'}
+                      Copy Link
+                    </button>
+                    <button
+                      onClick={() => setEditTranscript(t)}
+                      className="text-sm text-green-600"
+                    >
+                      Edit
                     </button>
                     <button
                       onClick={() => setViewTranscript(t)}
@@ -259,12 +316,13 @@ export default function AdminDashboard() {
                     <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Speaker</th>
                     <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Talk Title</th>
                     <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Date</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Due</th>
                     <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
                     <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {transcripts.map((t) => (
+                  {filteredTranscripts.map((t) => (
                     <tr key={t.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div className="font-medium text-gray-900">{t.speaker_name}</div>
@@ -276,6 +334,19 @@ export default function AdminDashboard() {
                       <td className="px-4 py-3 text-gray-600 text-sm">
                         {parseLocalDate(t.talk_date).toLocaleDateString()}
                       </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {t.due_date ? (
+                          <div className="flex items-center gap-1">
+                            <span>{parseLocalDate(t.due_date).toLocaleDateString()}</span>
+                            {t.status !== 'approved' && (() => {
+                              const info = getDueDateInfo(t.due_date)
+                              return info.label ? <span className={`text-xs font-medium ${info.colorClass}`}>{info.label}</span> : null
+                            })()}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">--</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={t.status} />
                       </td>
@@ -283,16 +354,22 @@ export default function AdminDashboard() {
                         <div className="flex gap-3 justify-end items-center">
                           <button
                             onClick={() => sendInvite(t)}
-                            className={`text-sm ${sentId === t.id ? 'text-green-600 font-medium' : t.reviewer_email ? 'text-purple-600 hover:underline' : 'text-gray-400 cursor-not-allowed'}`}
+                            className={`text-sm ${t.reviewer_email ? 'text-purple-600 hover:underline' : 'text-gray-400 cursor-not-allowed'}`}
                             title={t.reviewer_email ? `Email ${t.reviewer_email}` : 'No email set'}
                           >
-                            {sentId === t.id ? 'Opened!' : 'Email'}
+                            Email
                           </button>
                           <button
                             onClick={() => copyReviewLink(t.id)}
-                            className={`text-sm ${copiedId === t.id ? 'text-green-600 font-medium' : 'text-blue-600 hover:underline'}`}
+                            className="text-sm text-blue-600 hover:underline"
                           >
-                            {copiedId === t.id ? 'Copied!' : 'Copy Link'}
+                            Copy Link
+                          </button>
+                          <button
+                            onClick={() => setEditTranscript(t)}
+                            className="text-sm text-green-600 hover:underline"
+                          >
+                            Edit
                           </button>
                           <button
                             onClick={() => setViewTranscript(t)}
@@ -316,6 +393,8 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+            </>
+            )}
           </>
         )}
       </main>
@@ -415,7 +494,29 @@ export default function AdminDashboard() {
               >
                 Open Review Page
               </Link>
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
+                <button
+                  onClick={() => {
+                    exportAsText(viewTranscript)
+                    addToast('Exported as .txt', 'success')
+                  }}
+                  className="px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm"
+                >
+                  Export .txt
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await exportAsDocx(viewTranscript)
+                      addToast('Exported as .docx', 'success')
+                    } catch {
+                      addToast('Failed to export .docx', 'error')
+                    }
+                  }}
+                  className="px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm"
+                >
+                  Export .docx
+                </button>
                 <button
                   onClick={async () => {
                     const date = parseLocalDate(viewTranscript.talk_date).toLocaleDateString('en-US', {
@@ -424,18 +525,17 @@ export default function AdminDashboard() {
                       day: 'numeric'
                     })
                     const header = `${viewTranscript.talk_title} — ${date}\n\n`
-                    const content = viewTranscript.revised_text || viewTranscript.original_text
-                    await navigator.clipboard.writeText(header + content)
-                    setTextCopied(true)
-                    setTimeout(() => setTextCopied(false), 2000)
+                    const text = viewTranscript.revised_text || viewTranscript.original_text
+                    await navigator.clipboard.writeText(header + text)
+                    addToast('Text copied to clipboard', 'success')
                   }}
-                  className={`px-4 py-2 rounded-lg font-medium ${textCopied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  className="px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm"
                 >
-                  {textCopied ? 'Copied!' : 'Copy Text'}
+                  Copy Text
                 </button>
                 <button
                   onClick={() => setViewTranscript(null)}
-                  className="px-4 py-2 rounded-lg font-medium text-gray-700 hover:bg-gray-100"
+                  className="px-4 py-2 rounded-lg font-medium text-gray-700 hover:bg-gray-100 text-sm"
                 >
                   Close
                 </button>
@@ -444,35 +544,164 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {editTranscript && (
+        <EditTranscriptModal
+          transcript={editTranscript}
+          onClose={() => setEditTranscript(null)}
+          onSuccess={() => {
+            setEditTranscript(null)
+            fetchTranscripts()
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    pending_review: 'bg-yellow-100 text-yellow-800',
-    approved: 'bg-green-100 text-green-800'
-  }
+function EditTranscriptModal({
+  transcript,
+  onClose,
+  onSuccess
+}: {
+  transcript: Transcript
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const { addToast } = useToast()
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    speaker_name: transcript.speaker_name,
+    reviewer_email: transcript.reviewer_email || '',
+    talk_title: transcript.talk_title,
+    talk_date: transcript.talk_date,
+    due_date: transcript.due_date || ''
+  })
 
-  const labels: Record<string, string> = {
-    pending_review: 'Pending',
-    approved: 'Approved'
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+
+    const { error } = await supabase
+      .from('talk_transcripts')
+      .update({
+        ...form,
+        due_date: form.due_date || null,
+        reviewer_email: form.reviewer_email || null
+      })
+      .eq('id', transcript.id)
+
+    if (error) {
+      addToast(`Error updating transcript: ${error.message}`, 'error')
+    } else {
+      addToast('Transcript updated successfully', 'success')
+      onSuccess()
+    }
+    setSaving(false)
   }
 
   return (
-    <span className={`px-2 py-1 rounded text-xs font-medium ${styles[status]}`}>
-      {labels[status]}
-    </span>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Edit Transcript</h2>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Speaker Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={form.speaker_name}
+                onChange={(e) => setForm({ ...form, speaker_name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Reviewer Email
+              </label>
+              <input
+                type="email"
+                value={form.reviewer_email}
+                onChange={(e) => setForm({ ...form, reviewer_email: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Talk Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={form.talk_title}
+                onChange={(e) => setForm({ ...form, talk_title: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Talk Date *
+              </label>
+              <input
+                type="date"
+                required
+                value={form.talk_date}
+                onChange={(e) => setForm({ ...form, talk_date: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Review Due Date
+            </label>
+            <input
+              type="date"
+              value={form.due_date}
+              onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg font-medium text-gray-700 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }
 
 function AddTranscriptModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const { addToast } = useToast()
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     speaker_name: '',
     reviewer_email: '',
     talk_title: '',
     talk_date: new Date().toISOString().split('T')[0],
+    due_date: '',
     original_text: ''
   })
 
@@ -484,13 +713,14 @@ function AddTranscriptModal({ onClose, onSuccess }: { onClose: () => void; onSuc
       .from('talk_transcripts')
       .insert({
         ...form,
+        due_date: form.due_date || null,
         status: 'pending_review'
       })
 
     if (error) {
-      console.error('Full error:', JSON.stringify(error, null, 2))
-      alert(`Error: ${error.message} (Code: ${error.code}, Details: ${error.details}, Hint: ${error.hint})`)
+      addToast(`Error creating transcript: ${error.message}`, 'error')
     } else {
+      addToast('Transcript created successfully', 'success')
       onSuccess()
     }
     setSaving(false)
@@ -553,6 +783,18 @@ function AddTranscriptModal({ onClose, onSuccess }: { onClose: () => void; onSuc
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Review Due Date
+            </label>
+            <input
+              type="date"
+              value={form.due_date}
+              onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
 
           <div>

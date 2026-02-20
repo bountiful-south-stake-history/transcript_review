@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState, useCallback, use } from 'react'
-import { supabase, Transcript, parseLocalDate } from '@/lib/supabase'
+import { supabase, Transcript, parseLocalDate, getDueDateInfo } from '@/lib/supabase'
+import { useToast } from '@/components/Toast'
+import { StatusBadge } from '@/components/StatusBadge'
 import Link from 'next/link'
 
 interface ReviewPageProps {
@@ -20,6 +22,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
   const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showMenu, setShowMenu] = useState(false)
+  const { addToast } = useToast()
 
   // Fetch transcript and related transcripts on load
   useEffect(() => {
@@ -73,21 +76,28 @@ export default function ReviewPage({ params }: ReviewPageProps) {
     if (!transcript || saving) return
 
     setSaving(true)
+    const updates: Record<string, string> = { revised_text: content }
+
+    if (transcript.status === 'pending_review') {
+      updates.status = 'in_progress'
+    }
+
     const { error } = await supabase
       .from('talk_transcripts')
-      .update({
-        revised_text: content
-      })
+      .update(updates)
       .eq('id', transcript.id)
 
     if (error) {
-      console.error('Save error:', error)
+      addToast('Failed to save changes', 'error')
     } else {
       setHasChanges(false)
       setLastSaved(new Date())
+      if (updates.status) {
+        setTranscript(prev => prev ? { ...prev, status: updates.status as Transcript['status'] } : null)
+      }
     }
     setSaving(false)
-  }, [transcript, content, saving])
+  }, [transcript, content, saving, addToast])
 
   const handleApprove = async () => {
     if (!transcript) return
@@ -105,7 +115,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
       .eq('id', transcript.id)
 
     if (error) {
-      console.error('Approve error:', error)
+      addToast('Failed to approve transcript', 'error')
       setSaving(false)
       return
     }
@@ -114,6 +124,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
     setHasChanges(false)
     setShowApprovalModal(false)
     setSaving(false)
+    addToast('Transcript approved!', 'success')
   }
 
   const handleResetToOriginal = () => {
@@ -161,6 +172,17 @@ export default function ReviewPage({ params }: ReviewPageProps) {
                   day: 'numeric'
                 })}
               </p>
+              {transcript.due_date && transcript.status !== 'approved' && (() => {
+                const info = getDueDateInfo(transcript.due_date)
+                return (
+                  <p className={`text-sm mt-1 font-medium ${info.colorClass}`}>
+                    Due: {parseLocalDate(transcript.due_date).toLocaleDateString('en-US', {
+                      month: 'long', day: 'numeric', year: 'numeric'
+                    })}
+                    {info.label && ` (${info.label})`}
+                  </p>
+                )
+              })()}
             </div>
             <div className="flex items-center gap-3">
               {relatedTranscripts.length > 1 && (() => {
@@ -203,11 +225,13 @@ export default function ReviewPage({ params }: ReviewPageProps) {
                               </div>
                             </div>
                             <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-                              t.status === 'approved' 
-                                ? 'bg-green-100 text-green-700' 
+                              t.status === 'approved'
+                                ? 'bg-green-100 text-green-700'
+                                : t.status === 'in_progress'
+                                ? 'bg-blue-100 text-blue-700'
                                 : 'bg-yellow-100 text-yellow-700'
                             }`}>
-                              {t.status === 'approved' ? 'Done' : 'Pending'}
+                              {t.status === 'approved' ? 'Done' : t.status === 'in_progress' ? 'In Progress' : 'Pending'}
                             </span>
                           </div>
                         </Link>
@@ -217,7 +241,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
                 </div>
                 )
               })()}
-              <StatusBadge status={transcript.status} />
+              <StatusBadge status={transcript.status} variant="full" />
             </div>
           </div>
         </div>
@@ -342,23 +366,5 @@ export default function ReviewPage({ params }: ReviewPageProps) {
         </div>
       )}
     </div>
-  )
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    pending_review: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    approved: 'bg-green-100 text-green-800 border-green-200'
-  }
-
-  const labels: Record<string, string> = {
-    pending_review: 'Pending Review',
-    approved: 'Approved'
-  }
-
-  return (
-    <span className={`px-3 py-1 rounded-full text-sm font-medium border ${styles[status]}`}>
-      {labels[status]}
-    </span>
   )
 }
