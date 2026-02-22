@@ -127,8 +127,10 @@ export default function AdminDashboard() {
     setLoading(false)
   }
 
+  const BASE_URL = 'https://transcript.bountifulsouthstake.org'
+
   const copyReviewLink = async (id: string) => {
-    const link = `${window.location.origin}/review/${id}`
+    const link = `${BASE_URL}/review/${id}`
     try {
       await navigator.clipboard.writeText(link)
     } catch {
@@ -143,7 +145,7 @@ export default function AdminDashboard() {
   }
 
   const sendInvite = (t: Transcript) => {
-    const link = `${window.location.origin}/review/${t.id}`
+    const link = `${BASE_URL}/review/${t.id}`
     const firstName = t.speaker_name?.split(' ')[0] || 'Speaker'
     const subject = encodeURIComponent(`Awaiting Your Review: ${t.talk_title}`)
     const body = encodeURIComponent(
