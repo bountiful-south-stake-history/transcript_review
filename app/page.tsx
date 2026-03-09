@@ -176,7 +176,10 @@ export default function AdminDashboard() {
       return
     }
 
-    window.open(`mailto:${t.reviewer_email}?subject=${subject}&body=${body}`, '_blank')
+    window.location.href = `mailto:${t.reviewer_email}?subject=${subject}&body=${body}`
+
+    // Small delay so the mail client has time to launch before the confirm dialog appears
+    await new Promise(resolve => setTimeout(resolve, 500))
 
     if (window.confirm('Did you send the email?')) {
       const { error } = await supabase
