@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase, Transcript, parseLocalDate, getDueDateInfo } from '@/lib/supabase'
+import { supabase, Transcript, Contact, parseLocalDate, getDueDateInfo } from '@/lib/supabase'
 import { useToast } from '@/components/Toast'
 import { StatusBadge } from '@/components/StatusBadge'
 import { exportAsText, exportAsDocx } from '@/lib/export'
@@ -9,6 +9,8 @@ import { logError } from '@/lib/logger'
 import Link from 'next/link'
 import RichTextEditor from '@/components/RichTextEditor'
 import { sanitizeHtml, stripHtml, isHtml, plainTextToHtml } from '@/lib/sanitize'
+import ContactPicker from '@/components/ContactPicker'
+import ContactsModal from '@/components/ContactsModal'
 
 const ADMIN_PASSWORD = 'ComeFollowMe'
 
@@ -28,6 +30,8 @@ export default function AdminDashboard() {
   const [editTranscript, setEditTranscript] = useState<Transcript | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending_review' | 'in_progress' | 'approved'>('all')
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [showContactsModal, setShowContactsModal] = useState(false)
   const { addToast } = useToast()
 
   const filteredTranscripts = transcripts.filter(t => {
@@ -54,6 +58,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchTranscripts()
+      fetchContacts()
     }
   }, [isAuthenticated])
 
@@ -129,6 +134,15 @@ export default function AdminDashboard() {
     setLoading(false)
   }
 
+  async function fetchContacts() {
+    const { data } = await supabase
+      .from('contacts')
+      .select('*')
+      .order('name')
+
+    setContacts(data || [])
+  }
+
   const BASE_URL = 'https://transcript.bountifulsouthstake.org'
 
   const copyReviewLink = async (id: string) => {
@@ -146,7 +160,7 @@ export default function AdminDashboard() {
     addToast('Review link copied to clipboard', 'success')
   }
 
-  const sendInvite = (t: Transcript) => {
+  const sendInvite = async (t: Transcript) => {
     const link = `${BASE_URL}/review/${t.id}`
     const firstName = t.speaker_name?.split(' ')[0] || 'Speaker'
     const subject = encodeURIComponent(`Awaiting Your Review: ${t.talk_title}`)
@@ -156,12 +170,26 @@ export default function AdminDashboard() {
       `${link}\n\n` +
       `Thank you!`
     )
-    
-    if (t.reviewer_email) {
-      window.open(`mailto:${t.reviewer_email}?subject=${subject}&body=${body}`, '_blank')
-      addToast('Email client opened', 'success')
-    } else {
+
+    if (!t.reviewer_email) {
       addToast('No reviewer email set for this transcript', 'error')
+      return
+    }
+
+    window.open(`mailto:${t.reviewer_email}?subject=${subject}&body=${body}`, '_blank')
+
+    if (window.confirm('Did you send the email?')) {
+      const { error } = await supabase
+        .from('talk_transcripts')
+        .update({ email_sent_at: new Date().toISOString() })
+        .eq('id', t.id)
+
+      if (error) {
+        addToast('Failed to record email sent status', 'error')
+      } else {
+        addToast('Email marked as sent', 'success')
+        fetchTranscripts()
+      }
     }
   }
 
@@ -196,6 +224,12 @@ export default function AdminDashboard() {
               className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
             >
               + Add Transcript
+            </button>
+            <button
+              onClick={() => setShowContactsModal(true)}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+            >
+              Contacts
             </button>
           </div>
         </div>
@@ -277,9 +311,11 @@ export default function AdminDashboard() {
                   <div className="flex flex-wrap gap-3 items-center border-t border-gray-100 pt-3">
                     <button
                       onClick={() => sendInvite(t)}
-                      className={`text-sm ${t.reviewer_email ? 'text-purple-600' : 'text-gray-400'}`}
+                      className={`text-sm ${!t.reviewer_email ? 'text-gray-400' : t.email_sent_at ? 'text-green-600' : 'text-purple-600'}`}
                     >
-                      Email
+                      {t.email_sent_at
+                        ? `Sent ${new Date(t.email_sent_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}`
+                        : 'Send'}
                     </button>
                     <button
                       onClick={() => copyReviewLink(t.id)}
@@ -358,10 +394,12 @@ export default function AdminDashboard() {
                         <div className="flex gap-3 justify-end items-center">
                           <button
                             onClick={() => sendInvite(t)}
-                            className={`text-sm ${t.reviewer_email ? 'text-purple-600 hover:underline' : 'text-gray-400 cursor-not-allowed'}`}
-                            title={t.reviewer_email ? `Email ${t.reviewer_email}` : 'No email set'}
+                            className={`text-sm ${!t.reviewer_email ? 'text-gray-400 cursor-not-allowed' : t.email_sent_at ? 'text-green-600 hover:underline' : 'text-purple-600 hover:underline'}`}
+                            title={!t.reviewer_email ? 'No email set' : t.email_sent_at ? `Resend to ${t.reviewer_email}` : `Email ${t.reviewer_email}`}
                           >
-                            Email
+                            {t.email_sent_at
+                              ? `Sent ${new Date(t.email_sent_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}`
+                              : 'Send'}
                           </button>
                           <button
                             onClick={() => copyReviewLink(t.id)}
@@ -405,11 +443,20 @@ export default function AdminDashboard() {
 
       {showAddModal && (
         <AddTranscriptModal
+          contacts={contacts}
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
             setShowAddModal(false)
             fetchTranscripts()
           }}
+        />
+      )}
+
+      {showContactsModal && (
+        <ContactsModal
+          contacts={contacts}
+          onClose={() => setShowContactsModal(false)}
+          onRefresh={fetchContacts}
         />
       )}
 
@@ -700,14 +747,14 @@ function EditTranscriptModal({
   )
 }
 
-function AddTranscriptModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+function AddTranscriptModal({ contacts, onClose, onSuccess }: { contacts: Contact[]; onClose: () => void; onSuccess: () => void }) {
   const { addToast } = useToast()
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     speaker_name: '',
     reviewer_email: '',
     talk_title: '',
-    talk_date: new Date().toISOString().split('T')[0],
+    talk_date: new Date().toLocaleDateString('en-CA'),
     due_date: '',
     original_text: ''
   })
@@ -744,12 +791,15 @@ function AddTranscriptModal({ onClose, onSuccess }: { onClose: () => void; onSuc
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Speaker Name *
               </label>
-              <input
-                type="text"
-                required
+              <ContactPicker
+                contacts={contacts}
                 value={form.speaker_name}
-                onChange={(e) => setForm({ ...form, speaker_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onChange={(value) => setForm({ ...form, speaker_name: value })}
+                onSelect={(contact) => setForm({
+                  ...form,
+                  speaker_name: contact.name,
+                  reviewer_email: contact.email || '',
+                })}
               />
             </div>
             <div>

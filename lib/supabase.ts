@@ -27,6 +27,15 @@ export interface Transcript {
   revised_text: string | null
   status: 'pending_review' | 'in_progress' | 'approved'
   approved_at: string | null
+  email_sent_at: string | null
+  created_at: string
+}
+
+export interface Contact {
+  id: string
+  name: string
+  email: string | null
+  role: string | null
   created_at: string
 }
 
