@@ -2,6 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* TipTap Rich Text Editor */
+.tiptap {
+  outline: none;
+  min-height: 200px;
+  padding: 1.5rem;
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  font-size: 1.125rem;
+  line-height: 1.75;
+  color: #1f2937;
+}
+
+.tiptap p {
+  margin-bottom: 1em;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid #d1d5db;
+  padding-left: 1rem;
+  margin-left: 1rem;
+  font-style: italic;
+  color: #374151;
+}
+
+.tiptap-admin {
+  min-height: 180px;
+  padding: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.625;
+}
+
+.tiptap-admin p {
+  margin-bottom: 0.5em;
+}
+
 @keyframes pulse-border {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
   50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }

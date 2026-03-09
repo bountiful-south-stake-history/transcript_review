@@ -7,6 +7,8 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { exportAsText, exportAsDocx } from '@/lib/export'
 import { logError } from '@/lib/logger'
 import Link from 'next/link'
+import RichTextEditor from '@/components/RichTextEditor'
+import { sanitizeHtml, stripHtml, isHtml, plainTextToHtml } from '@/lib/sanitize'
 
 const ADMIN_PASSWORD = 'ComeFollowMe'
 
@@ -476,16 +478,18 @@ export default function AdminDashboard() {
               {viewTranscript.revised_text ? (
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase">Approved/Revised Text</h3>
-                  <div className="prose max-w-none text-gray-800 whitespace-pre-wrap font-serif">
-                    {viewTranscript.revised_text}
-                  </div>
+                  <div
+                    className="prose max-w-none text-gray-800 font-serif"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(viewTranscript.revised_text) }}
+                  />
                 </div>
               ) : (
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-2 uppercase">Original Text</h3>
-                  <div className="prose max-w-none text-gray-800 whitespace-pre-wrap font-serif">
-                    {viewTranscript.original_text}
-                  </div>
+                  <div
+                    className="prose max-w-none text-gray-800 font-serif"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(viewTranscript.original_text) }}
+                  />
                 </div>
               )}
             </div>
@@ -527,7 +531,8 @@ export default function AdminDashboard() {
                       day: 'numeric'
                     })
                     const header = `${viewTranscript.talk_title} — ${date}\n\n`
-                    const text = viewTranscript.revised_text || viewTranscript.original_text
+                    const rawText = viewTranscript.revised_text || viewTranscript.original_text
+                    const text = stripHtml(rawText)
                     await navigator.clipboard.writeText(header + text)
                     addToast('Text copied to clipboard', 'success')
                   }}
@@ -803,13 +808,11 @@ function AddTranscriptModal({ onClose, onSuccess }: { onClose: () => void; onSuc
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Transcript Text *
             </label>
-            <textarea
-              required
-              rows={12}
-              value={form.original_text}
-              onChange={(e) => setForm({ ...form, original_text: e.target.value })}
+            <RichTextEditor
+              content={form.original_text}
+              onChange={(html) => setForm({ ...form, original_text: html })}
+              editorClassName="tiptap-admin"
               placeholder="Paste the transcript here..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
             />
           </div>
 

@@ -5,6 +5,7 @@ import { supabase, Transcript, parseLocalDate, getDueDateInfo } from '@/lib/supa
 import { useToast } from '@/components/Toast'
 import { StatusBadge } from '@/components/StatusBadge'
 import Link from 'next/link'
+import RichTextEditor from '@/components/RichTextEditor'
 
 interface ReviewPageProps {
   params: Promise<{ id: string }>
@@ -22,6 +23,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
   const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showMenu, setShowMenu] = useState(false)
+  const [resetKey, setResetKey] = useState(0)
   const { addToast } = useToast()
 
   // Fetch transcript and related transcripts on load
@@ -131,6 +133,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
     if (!transcript) return
     if (window.confirm('Reset to original transcript? Your changes will be lost.')) {
       setContent(transcript.original_text)
+      setResetKey(k => k + 1)
       setHasChanges(true)
     }
   }
@@ -266,18 +269,17 @@ export default function ReviewPage({ params }: ReviewPageProps) {
           </div>
         ) : (
           <>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              {/* Editor */}
-              <textarea
-                value={content}
-                onChange={(e) => {
-                  setContent(e.target.value)
-                  setHasChanges(true)
-                }}
-                className="w-full min-h-[500px] p-6 text-gray-800 leading-relaxed resize-y focus:outline-none font-serif text-lg"
-                placeholder="Transcript content..."
-              />
-            </div>
+            {/* Editor */}
+            <RichTextEditor
+              content={content}
+              onChange={(html) => {
+                setContent(html)
+                setHasChanges(true)
+              }}
+              resetKey={resetKey}
+              className="bg-white shadow-sm"
+              placeholder="Transcript content..."
+            />
 
             {/* Action bar */}
             <div className="mt-4 flex items-center justify-between flex-wrap gap-3">
