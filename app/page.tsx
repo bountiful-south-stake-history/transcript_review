@@ -781,6 +781,16 @@ function AddTranscriptModal({ contacts, onClose, onSuccess }: { contacts: Contac
     if (error) {
       addToast(`Error creating transcript: ${error.message}`, 'error')
     } else {
+      // Auto-save speaker as contact if not already in the list
+      const nameExists = contacts.some(
+        c => c.name.toLowerCase() === form.speaker_name.trim().toLowerCase()
+      )
+      if (!nameExists && form.speaker_name.trim()) {
+        await supabase.from('contacts').insert({
+          name: form.speaker_name.trim(),
+          email: form.reviewer_email.trim() || null,
+        })
+      }
       addToast('Transcript created successfully', 'success')
       onSuccess()
     }
