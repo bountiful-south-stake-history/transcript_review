@@ -164,12 +164,16 @@ export default function AdminDashboard() {
     const link = `${BASE_URL}/review/${t.id}`
     const firstName = t.speaker_name?.split(' ')[0] || 'Speaker'
     const subject = encodeURIComponent(`Awaiting Your Review: ${t.talk_title}`)
-    const body = encodeURIComponent(
-      `${firstName},\n\n` +
-      `Will you please take a moment to review this document "${t.talk_title}", revising it as you see fit, then press "Approve" when ready to be published.\n\n` +
-      `${link}\n\n` +
-      `Thank you!`
-    )
+    const bodyText = [
+      `${firstName},`,
+      '',
+      `Will you please take a moment to review this document "${t.talk_title}", revising it as you see fit, then press "Approve" when ready to be published.`,
+      '',
+      link,
+      '',
+      'Thank you!',
+    ].join('\r\n')
+    const body = encodeURIComponent(bodyText)
 
     if (!t.reviewer_email) {
       addToast('No reviewer email set for this transcript', 'error')
